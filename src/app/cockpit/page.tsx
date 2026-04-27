@@ -173,7 +173,7 @@ export default async function CockpitPage() {
                   const isSpiritual = e.department === "spiritual";
                   const isCoS = e.id === "solomon";
                   return (
-                    <tr key={row.agent_id} className={`border-b border-steel/40 hover:bg-steel/30 transition ${isSpiritual ? "bg-royal/5" : isCoS ? "bg-gold/5" : ""}`}>
+                    <tr key={row.agent_id} data-agent-row={row.agent_id} className={`border-b border-steel/40 hover:bg-steel/40 cursor-pointer transition ${isSpiritual ? "bg-royal/5" : isCoS ? "bg-gold/5" : ""}`} title={`Click to dispatch a directive to ${e.name}`}>
                       <td className="px-4 py-3 text-sm">
                         <div className="text-ivory flex items-center gap-2">
                           {isSpiritual && <span className="text-royal">✦</span>}

@@ -68,6 +68,21 @@ export default function CockpitShell({ initialApprovals, agents, children }: Coc
     return () => window.removeEventListener("keydown", onKey);
   }, [closeDrawer]);
 
+  // Global click handler — agent row click pre-selects agent in capture drawer
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const row = target.closest<HTMLElement>("[data-agent-row]");
+      if (!row) return;
+      const agentId = row.getAttribute("data-agent-row");
+      if (!agentId) return;
+      setCaptureAgentId(agentId);
+      setDrawer("capture");
+    };
+    window.addEventListener("click", onClick);
+    return () => window.removeEventListener("click", onClick);
+  }, []);
+
   // Auto-focus capture input when drawer opens
   useEffect(() => {
     if (drawer === "capture") {
