@@ -4,6 +4,7 @@ import { getSupabaseServer } from "@/lib/supabase-server";
 interface CaptureBody {
   text: string;
   priority: "P1" | "P2" | "P3";
+  agent_id?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -39,18 +40,29 @@ export async function POST(request: NextRequest) {
 
   const title = text.length > 80 ? text.slice(0, 77) + "…" : text;
 
+  // Validate requested agent exists, fall back to solomon
+  let routedAgent = "solomon";
+  if (body.agent_id && body.agent_id !== "solomon") {
+    const { data: agent } = await supabase
+      .from("kingdom_entities")
+      .select("id")
+      .eq("id", body.agent_id)
+      .single();
+    if (agent) routedAgent = body.agent_id;
+  }
+
   const { data, error } = await supabase
     .from("tasks")
     .insert({
       account_id: agencyAccount?.id ?? null,
-      agent_id: "solomon",
+      agent_id: routedAgent,
       title,
       body: text,
       status: "todo",
       priority,
       source: "founder_capture",
       created_by_user: user.id,
-      metadata: { captured_via: "cmdk", channel: "cockpit" },
+      metadata: { captured_via: "cmdk", channel: "cockpit", routed_to: routedAgent },
     })
     .select("id")
     .single();

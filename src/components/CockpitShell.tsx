@@ -11,18 +11,27 @@ type Approval = {
   created_at: string;
 };
 
+type AgentOption = {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+};
+
 interface CockpitShellProps {
   initialApprovals: Approval[];
+  agents: AgentOption[];
   children: React.ReactNode;
 }
 
 type DrawerKind = "capture" | "approvals" | null;
 
-export default function CockpitShell({ initialApprovals, children }: CockpitShellProps) {
+export default function CockpitShell({ initialApprovals, agents, children }: CockpitShellProps) {
   const [drawer, setDrawer] = useState<DrawerKind>(null);
   const [approvals, setApprovals] = useState<Approval[]>(initialApprovals);
   const [captureText, setCaptureText] = useState("");
   const [capturePriority, setCapturePriority] = useState<"P1" | "P2" | "P3">("P2");
+  const [captureAgentId, setCaptureAgentId] = useState<string>("solomon");
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const captureInputRef = useRef<HTMLTextAreaElement>(null);
@@ -73,10 +82,11 @@ export default function CockpitShell({ initialApprovals, children }: CockpitShel
       const res = await fetch("/api/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: captureText.trim(), priority: capturePriority }),
+        body: JSON.stringify({ text: captureText.trim(), priority: capturePriority, agent_id: captureAgentId }),
       });
       if (res.ok) {
-        showToast("✓ Captured · routed to Solomon");
+        const routedName = agents.find(a => a.id === captureAgentId)?.name ?? "Solomon";
+        showToast(`✓ Captured · routed to ${routedName}`);
         setCaptureText("");
         closeDrawer();
       } else {
@@ -210,10 +220,32 @@ export default function CockpitShell({ initialApprovals, children }: CockpitShel
             </div>
           </div>
 
+          <div>
+            <div className="font-mono text-[10px] tracking-widest uppercase text-ash mb-2">Route to</div>
+            <select
+              value={captureAgentId}
+              onChange={(e) => setCaptureAgentId(e.target.value)}
+              className="w-full bg-ink border border-steel rounded-lg px-3 py-2 text-sm text-ivory font-sans focus:outline-none focus:border-gold/60 cursor-pointer"
+            >
+              {agents.map((a) => {
+                const isSpiritual = a.department === "spiritual";
+                const isCoS = a.id === "solomon";
+                const prefix = isSpiritual ? "✦ " : isCoS ? "⚜ " : "";
+                return (
+                  <option key={a.id} value={a.id}>
+                    {prefix}{a.name} — {a.role}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
           <div className="rounded-lg p-3 bg-ink/60 border border-steel/60">
             <div className="font-mono text-[10px] tracking-widest uppercase text-ash mb-1">Routing</div>
             <div className="text-xs text-ivory">
-              → Solomon (Chief of Staff) categorizes intent, assigns to right agent or human, posts back to your inbox.
+              {captureAgentId === "solomon"
+                ? "→ Solomon (Chief of Staff) categorizes intent and dispatches to the right specialist."
+                : `→ Direct to ${agents.find(a => a.id === captureAgentId)?.name}. Solomon receives a copy.`}
             </div>
           </div>
         </div>

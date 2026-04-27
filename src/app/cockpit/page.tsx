@@ -58,7 +58,19 @@ export default async function CockpitPage() {
   const hbs: Heartbeat[] = heartbeats ?? [];
   const accts: Account[] = accounts ?? [];
   const approvalsList = pendingApprovals ?? [];
-  const entMap = new Map(ents.map(e => [e.id, e]));
+
+  // Founder-ordered roster: Spiritual Counsel → Solomon → rest alphabetical
+  function entityRank(e: Entity): number {
+    if (e.department === "spiritual") return 0;
+    if (e.id === "solomon") return 1;
+    if (e.department === "founder") return 2;
+    return 3;
+  }
+  const orderedEntities = [...ents].sort((a, b) => {
+    const r = entityRank(a) - entityRank(b);
+    if (r !== 0) return r;
+    return a.name.localeCompare(b.name);
+  });
 
   const totalCost = hbs.reduce((s, h) => s + Number(h.cost_usd_24h ?? 0), 0);
   const totalTokens = hbs.reduce((s, h) => s + Number(h.tokens_in_24h ?? 0) + Number(h.tokens_out_24h ?? 0), 0);
@@ -70,22 +82,39 @@ export default async function CockpitPage() {
   const idleCount = hbs.filter(h => h.status === "idle").length;
   const properties = accts.filter(a => a.type === "property");
   const clients = accts.filter(a => a.type === "client");
-  const topAgents = hbs.slice(0, 10);
+
+  // Build unified agent rows in founder hierarchy order — all entities, not just top by cost
+  const hbMap = new Map(hbs.map(h => [h.agent_id, h]));
+  const agentRows = orderedEntities
+    .filter(e => e.department !== "founder") // hide Craig himself from his own table
+    .map(e => {
+      const h = hbMap.get(e.id);
+      return {
+        agent_id: e.id,
+        entity: e,
+        status: h?.status ?? "idle",
+        last_action: h?.last_action ?? null,
+        runs_24h: h?.runs_24h ?? 0,
+        tokens_in_24h: h?.tokens_in_24h ?? 0,
+        tokens_out_24h: h?.tokens_out_24h ?? 0,
+        cost_usd_24h: h?.cost_usd_24h ?? 0,
+      };
+    });
 
   return (
-    <CockpitShell initialApprovals={approvalsList}>
+    <CockpitShell initialApprovals={approvalsList} agents={orderedEntities.map(e => ({ id: e.id, name: e.name, role: e.role, department: e.department }))}>
     <main className="min-h-screen px-8 py-6">
       <div className="max-w-[1400px] mx-auto space-y-6">
 
         {/* Top bar */}
         <div className="flex items-center justify-between pb-4 border-b border-steel">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-lg overflow-hidden flex items-center justify-center bg-white ring-1 ring-gold/40 shadow-md">
+            <div className="w-12 h-12 flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/seriousmindz-brain.jpg"
+                src="/seriousmindz-brain.png"
                 alt="SeriousMindz AI"
-                className="w-full h-full object-cover scale-[2.2]"
+                className="w-full h-full object-contain drop-shadow-[0_0_8px_rgba(127,119,221,0.45)]"
               />
             </div>
             <div>
@@ -123,38 +152,42 @@ export default async function CockpitPage() {
           <KpiCard num={`$${totalCost.toFixed(2)}`} label="Compute · 24h" sub="of $1500 monthly budget" accent="gold" />
         </div>
 
-        {/* Token & Cost Live Table */}
+        {/* Token & Cost Live Table — full roster, founder hierarchy */}
         <div className="cmd-panel">
           <div className="px-4 py-3 border-b border-steel flex items-center justify-between">
-            <span className="font-mono text-[11px] tracking-widest uppercase text-gold">▸ AGENT LIVE TELEMETRY · COST & TOKEN BURN · 24H</span>
-            <span className="font-mono text-[10px] text-ash">${totalCost.toFixed(2)} total · {(totalTokens/1000).toFixed(0)}k tokens</span>
+            <span className="font-mono text-[11px] tracking-widest uppercase text-gold">▸ AGENT ROSTER · LIVE TELEMETRY · 24H</span>
+            <span className="font-mono text-[10px] text-ash">${totalCost.toFixed(2)} total · {(totalTokens/1000).toFixed(0)}k tokens · {agentRows.length} agents</span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[640px] overflow-y-auto">
             <table className="w-full">
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="bg-obsidian-2">
-                  {["AGENT", "DEPT", "LAST ACTION", "RUNS", "TOKENS", "$ COST", "AVG/RUN", "STATUS"].map(h => (
+                  {["AGENT", "DEPT", "LAST ACTION", "RUNS", "TOKENS", "$ COST", "STATUS"].map(h => (
                     <th key={h} className="text-left px-4 py-3 font-mono text-[10px] tracking-widest uppercase text-ash border-b border-steel">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {topAgents.map(h => {
-                  const e = entMap.get(h.agent_id);
-                  const avg = h.runs_24h > 0 ? Number(h.cost_usd_24h) / h.runs_24h : 0;
+                {agentRows.map(row => {
+                  const e = row.entity;
+                  const isSpiritual = e.department === "spiritual";
+                  const isCoS = e.id === "solomon";
                   return (
-                    <tr key={h.agent_id} className="border-b border-steel/40 hover:bg-steel/30 transition">
+                    <tr key={row.agent_id} className={`border-b border-steel/40 hover:bg-steel/30 transition ${isSpiritual ? "bg-royal/5" : isCoS ? "bg-gold/5" : ""}`}>
                       <td className="px-4 py-3 text-sm">
-                        <div className="text-ivory">{e?.name ?? h.agent_id}</div>
-                        <div className="font-mono text-[10px] text-ash">{e?.role ?? ""}</div>
+                        <div className="text-ivory flex items-center gap-2">
+                          {isSpiritual && <span className="text-royal">✦</span>}
+                          {isCoS && <span className="text-gold">⚜</span>}
+                          {e.name}
+                        </div>
+                        <div className="font-mono text-[10px] text-ash">{e.role}</div>
                       </td>
-                      <td className="px-4 py-3 font-mono text-[11px] text-ash">{e?.department ?? "—"}</td>
-                      <td className="px-4 py-3 text-xs text-ivory truncate max-w-[280px]">{h.last_action ?? "—"}</td>
-                      <td className="px-4 py-3 font-mono text-[11px] text-ivory text-right">{h.runs_24h}</td>
-                      <td className="px-4 py-3 font-mono text-[11px] text-ivory text-right">{(h.tokens_in_24h/1000).toFixed(0)}k/{(h.tokens_out_24h/1000).toFixed(0)}k</td>
-                      <td className="px-4 py-3 font-mono text-[12px] text-gold text-right">${Number(h.cost_usd_24h).toFixed(2)}</td>
-                      <td className="px-4 py-3 font-mono text-[11px] text-ash text-right">${avg.toFixed(3)}</td>
-                      <td className="px-4 py-3"><StatusPill status={h.status} /></td>
+                      <td className="px-4 py-3 font-mono text-[11px] text-ash">{e.department.replace("vertical-", "v").replace(/-/g, " ")}</td>
+                      <td className="px-4 py-3 text-xs text-ivory truncate max-w-[280px]">{row.last_action ?? "—"}</td>
+                      <td className="px-4 py-3 font-mono text-[11px] text-ivory text-right">{row.runs_24h || "—"}</td>
+                      <td className="px-4 py-3 font-mono text-[11px] text-ivory text-right">{row.runs_24h > 0 ? `${(row.tokens_in_24h/1000).toFixed(0)}k/${(row.tokens_out_24h/1000).toFixed(0)}k` : "—"}</td>
+                      <td className="px-4 py-3 font-mono text-[12px] text-gold text-right">{row.cost_usd_24h > 0 ? `$${Number(row.cost_usd_24h).toFixed(2)}` : "—"}</td>
+                      <td className="px-4 py-3"><StatusPill status={row.status} /></td>
                     </tr>
                   );
                 })}
@@ -162,7 +195,7 @@ export default async function CockpitPage() {
             </table>
           </div>
           <div className="px-4 py-3 border-t border-steel/50 text-center font-mono text-[10px] text-ash">
-            + {hbs.length - topAgents.length} more entities · {greenCount}G · {yellowCount}Y · {approvalCount}A · {idleCount}IDLE
+            {agentRows.length} agents · {greenCount}G · {yellowCount}Y · {approvalCount}A · {idleCount + (agentRows.length - hbs.length)}IDLE · ✦ Spiritual Counsel · ⚜ Chief of Staff
           </div>
         </div>
 
