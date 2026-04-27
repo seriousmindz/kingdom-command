@@ -1,5 +1,6 @@
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
+import CockpitShell from "@/components/CockpitShell";
 
 export const dynamic = "force-dynamic";
 
@@ -46,15 +47,17 @@ export default async function CockpitPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: entities }, { data: heartbeats }, { data: accounts }] = await Promise.all([
+  const [{ data: entities }, { data: heartbeats }, { data: accounts }, { data: pendingApprovals }] = await Promise.all([
     supabase.from("kingdom_entities").select("id, name, role, department, function").order("name"),
     supabase.from("entity_heartbeats").select("*").order("cost_usd_24h", { ascending: false }),
     supabase.from("accounts").select("*").order("monthly_revenue", { ascending: false }),
+    supabase.from("approvals").select("id, agent_id, title, preview, status, created_at").eq("status", "pending").order("created_at", { ascending: false }),
   ]);
 
   const ents: Entity[] = entities ?? [];
   const hbs: Heartbeat[] = heartbeats ?? [];
   const accts: Account[] = accounts ?? [];
+  const approvalsList = pendingApprovals ?? [];
   const entMap = new Map(ents.map(e => [e.id, e]));
 
   const totalCost = hbs.reduce((s, h) => s + Number(h.cost_usd_24h ?? 0), 0);
@@ -70,6 +73,7 @@ export default async function CockpitPage() {
   const topAgents = hbs.slice(0, 10);
 
   return (
+    <CockpitShell initialApprovals={approvalsList}>
     <main className="min-h-screen px-8 py-6">
       <div className="max-w-[1400px] mx-auto space-y-6">
 
@@ -88,7 +92,7 @@ export default async function CockpitPage() {
             <span className="font-mono text-[11px] tracking-widest uppercase px-3 py-1.5 rounded border border-signal/30 bg-signal/10 text-signal-soft">
               ● {greenCount} OPERATIONAL
             </span>
-            <span className="font-mono text-[11px] text-ash">{user.email}</span>
+            <span className="font-mono text-[11px] text-ash">{user?.email ?? ""}</span>
           </div>
         </div>
 
@@ -97,7 +101,7 @@ export default async function CockpitPage() {
           <div>
             <div className="font-mono text-[10px] tracking-widest uppercase text-gold">▸ Sovereign Telemetry · Multi-Tenant</div>
             <h1 className="font-display text-4xl mt-1 text-ivory">Good morning, Founder.</h1>
-            <p className="text-sm mt-2 text-ash">{ents.length} entities · {properties.length} properties · {clients.length} clients · {approvalCount} await your sign-off.</p>
+            <p className="text-sm mt-2 text-ash">{ents.length} entities · {properties.length} properties · {clients.length} clients · {approvalsList.length} await your sign-off · press <span className="font-mono text-gold">⌘A</span></p>
           </div>
           <div className="text-right">
             <div className="font-display text-5xl text-gold">${totalMrr.toLocaleString()}</div>
@@ -200,10 +204,11 @@ export default async function CockpitPage() {
         </div>
 
         <div className="text-center text-xs text-ash pb-8 font-mono">
-          Kingdom Command v3 · Sovereign Telemetry · v4 · Live from tlaqntsybxmnqnzrcaav · {ents.length} entities · {accts.length} accounts
+          Kingdom Command v3 · Sovereign Telemetry · v4 · Live from tlaqntsybxmnqnzrcaav · {ents.length} entities · {accts.length} accounts · ⌘K capture · ⌘A approvals
         </div>
       </div>
     </main>
+    </CockpitShell>
   );
 }
 
