@@ -80,12 +80,17 @@ export default async function CockpitPage() {
         {/* Top bar */}
         <div className="flex items-center justify-between pb-4 border-b border-steel">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-gradient-to-br from-gold to-gold-deep">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A0E1A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>
+            <div className="w-11 h-11 rounded-lg overflow-hidden flex items-center justify-center bg-white ring-1 ring-gold/40 shadow-md">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/seriousmindz-brain.jpg"
+                alt="SeriousMindz AI"
+                className="w-full h-full object-cover scale-[2.2]"
+              />
             </div>
             <div>
               <div className="font-display text-xl text-ivory">Kingdom Cockpit</div>
-              <div className="font-mono text-[10px] tracking-widest uppercase text-ash">Founder Bridge · Live from Supabase</div>
+              <div className="font-mono text-[10px] tracking-widest uppercase text-ash">SeriousMindz AI · Founder Bridge</div>
             </div>
           </div>
           <div className="flex items-center gap-3">
