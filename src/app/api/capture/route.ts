@@ -22,12 +22,12 @@ export async function POST(request: NextRequest) {
   if (!text) return NextResponse.json({ error: "empty capture" }, { status: 400 });
   if (text.length > 4000) return NextResponse.json({ error: "too long" }, { status: 400 });
 
-  const priorityMap: Record<string, "high" | "normal" | "low"> = {
-    P1: "high",
-    P2: "normal",
-    P3: "low",
+  const priorityMap: Record<string, "p1" | "p2" | "p3"> = {
+    P1: "p1",
+    P2: "p2",
+    P3: "p3",
   };
-  const priority = priorityMap[body.priority] ?? "normal";
+  const priority = priorityMap[body.priority] ?? "p2";
 
   // Default to founder/agency account scope
   const { data: agencyAccount } = await supabase
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       agent_id: "solomon",
       title,
       body: text,
-      status: "pending",
+      status: "todo",
       priority,
       source: "founder_capture",
       created_by_user: user.id,
